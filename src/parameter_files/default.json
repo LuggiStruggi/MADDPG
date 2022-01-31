@@ -1,0 +1,22 @@
+{
+	"env": ["navigation", "Name of the environment."],
+	"normalize_actions": [true, "If to normalize actions."],
+	"normalize_observations": [true, "If to normalize observations."],
+	"normalize_rewards": [true, "If to normalize rewards."],
+	"total_batches": [2000000, "Number of batches to train in total."],
+	"n_agents": [3, "Number of agents."],
+	"exploration_noise": [0.3, "Exploration noise of agent."],
+	"lr_critic": [0.01, "Learning rate of critic"],
+	"lr_actor": [0.01, "Learning rate of actor"],
+	"discount": [0.95, "Discount factor for episode reward."],
+	"soft_update_tau": [0.03, "Soft update parameter."],
+	"history": [0, "History length."],
+	"batch_size": [256, "Batch size."],
+	"gather_episodes": [1, "Number of consecutive episodes to gather data."],
+	"train_batches": [1, "Number of consecutive batches trained."],
+	"save_weights_freq": [2000, "Frequency (batches) of saving the agent weights during traning."],
+	"log_loss_freq": [20, "Frequency (batches) of logging the train losses."],
+	"test_freq": [2000, "Frequency (batches) of testing and logging the agent performance."]
+}
+
+
