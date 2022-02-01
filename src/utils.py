@@ -102,17 +102,22 @@ class Parameters:
 		self.help.fixed = True
 
 	def load_from_file(self, path: str):
-
 		with open(path) as f:
 			data = json.load(f)
 		for key in data.keys():
 			setattr(self, key, data[key][0])
 			setattr(self.help, key, data[key][1])
 
+	def save_to_file(self, path: str):
+		data = {key:[self.__dict__[key], self.help.__dict__[key]] for key in self.__dict__.keys() if (key != "fixed" and key != "help")}
+		with open(path, 'w', encoding='utf-8') as f:
+			json.dump(data, f)
+
 	def overload(self, other, ignore=[]):
 		for arg in vars(other):
 			if arg not in ignore and getattr(other, arg):
 				setattr(self, arg, getattr(other, arg))
+				setattr(self.help, arg, "")
 
 	def as_dict(self):
 		return {key: val for key, val in self.__dict__.items() if (key != "fixed" and key != "help")}

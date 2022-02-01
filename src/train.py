@@ -11,10 +11,6 @@ import time
 from utils import AverageValueMeter, Parameters, CSVLogger
 import runnamegen
 
-act_dim = 2
-n_agents = 1
-obs_dim = n_agents*4
-history = 0
 
 def train(params):
 
@@ -46,8 +42,9 @@ def train(params):
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 
-	with open(os.path.join(log_dir, "parameters.txt"), "w") as f:
-		f.write(str(params))
+	params.save_to_file(os.path.join(log_dir, "parameters.json"))
+
+	print(params)
 
 	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "critic loss", "batches trained", "episodes gathered"], log_time=True)
 	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "batches trained", "episodes gathered"], log_time=True)
@@ -67,7 +64,8 @@ def train(params):
 					obs = agents.buffer.history.get_new_obs()
 					obs = obs=torch.swapaxes(obs, 0, 1)
 					act = agents.act(obs=obs, deterministic=False).squeeze()
-					#act = act.unsqueeze(dim = 0) # 1 agent case
+					if params.n_agents == 1:
+						act = act.unsqueeze(dim = 0) # 1 agent case
 				n_obs, rew, done, _ = env.step(act.numpy())
 				agents.buffer.store(act, rew, torch.Tensor(n_obs), done)
 			episode_counter += 1
@@ -112,8 +110,9 @@ def train(params):
 							with torch.no_grad():
 								obs = agents.buffer.history.get_new_obs()
 								obs = obs=torch.swapaxes(obs, 0, 1)
-								act = agents.act(obs=obs, deterministic=False).squeeze()
-								#act = act.unsqueeze(dim = 0) # 1 agent case
+								act = agents.act(obs=obs, deterministic=True).squeeze()
+								if params.n_agents == 1:
+									act = act.unsqueeze(dim = 0) # 1 agent case
 							n_obs, rew, done, _ = env.step(act.numpy())
 							agents.buffer.history.store(torch.Tensor(n_obs))
 							e_return += rew
@@ -154,18 +153,16 @@ if __name__ == '__main__':
 	
 	args = parser.parse_args()
 	
+	args.run_name = runnamegen.generate("_")
+	
+	now = datetime.now()
+	args.date = now.strftime("%d/%m/%Y")
+	args.time = now.strftime("%H:%M:%S")
+
 	params = Parameters(args.cfg)
 
 	params.overload(args, ignore=['cfg'])
-
-	params.run_name = runnamegen.generate("_")
-	
-	now = datetime.now()
-	params.date = now.strftime("%d/%m/%Y")
-	params.time = now.strftime("%H:%M:%S")
 	
 	params.fix()
-
-	print(params)
-		
+	
 	train(params)		
