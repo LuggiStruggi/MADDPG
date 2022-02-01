@@ -57,7 +57,7 @@ def train(params):
 
 	while batch_counter < params.total_batches:
 		
-		# gather data
+		# gather data -----------------------------------------------------
 		for episode in range(params.gather_episodes):
 			done = 0
 			obs = env.reset()
@@ -72,29 +72,59 @@ def train(params):
 				agents.buffer.store(act, rew, torch.Tensor(n_obs), done)
 			episode_counter += 1
 
-		# train
-		if len(agents.buffer) < params.batch_size:
-			continue
+		# train ------------------------------------------------------------
+		
+		# enough transitions for one batch required
+		if len(agents.buffer) >= params.batch_size:
 
-		critic_loss = AverageValueMeter()
-		actor_loss = AverageValueMeter()
-		for batch in range(params.train_batches):
-			c_loss, a_loss  = agents.train_batch(optim_actor = True, update_targets = True)
-			actor_loss += a_loss
-			critic_loss += c_loss
-			batch_counter += 1
-			if batch_counter % params.save_weights_freq == 0:
-				save_dir = os.path.join(log_dir, f"batch_{batch_counter}")
-				if not os.path.exists(save_dir):
-					os.makedirs(save_dir)
-				agents.save(save_dir)
+			critic_loss = AverageValueMeter()
+			actor_loss = AverageValueMeter()
+			for batch in range(params.train_batches):
+				c_loss, a_loss  = agents.train_batch(optim_actor = True, update_targets = True)
+				actor_loss += a_loss
+				critic_loss += c_loss
+				batch_counter += 1
+				if batch_counter % params.save_weights_freq == 0:
+					save_dir = os.path.join(log_dir, f"batch_{batch_counter}")
+					if not os.path.exists(save_dir):
+						os.makedirs(save_dir)
+					agents.save(save_dir)
 
-		if batch_counter % params.log_loss_freq == 0:
-			print(f"Episodes Gathered: {episode_counter} Batches Trained: {batch_counter}")
-			print(f"Actor loss: {str(actor_loss)}")
-			print(f"Critic loss: {str(critic_loss)}")
-			print("\n")
-			loss_logger.log([actor_loss, critic_loss, batch_counter, episode_counter])
+				if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
+					print(f"Episodes Gathered: {episode_counter} Batches Trained: {batch_counter}")
+
+				if batch_counter % params.log_loss_freq == 0:
+					print(f"Actor loss: {actor_loss}")
+					print(f"Critic loss: {critic_loss}")
+					loss_logger.log([actor_loss, critic_loss, batch_counter, episode_counter])
+
+				# test ----------------------------------------------------------------
+				if batch_counter % params.test_freq == 0:
+					
+					episode_return = AverageValueMeter()
+					for episode in range(params.test_episodes):
+						done = 0
+						e_return = 0
+						obs = agents.buffer.history.clear()
+						obs = env.reset()
+						agents.buffer.history.store(torch.Tensor(obs))
+						while(not done):
+							with torch.no_grad():
+								obs = agents.buffer.history.get_new_obs()
+								obs = obs=torch.swapaxes(obs, 0, 1)
+								act = agents.act(obs=obs, deterministic=False).squeeze()
+								#act = act.unsqueeze(dim = 0) # 1 agent case
+							n_obs, rew, done, _ = env.step(act.numpy())
+							agents.buffer.history.store(torch.Tensor(n_obs))
+							e_return += rew
+						episode_return += e_return
+				
+					print(f"Episode return: {episode_return}")
+					test_logger.log([episode_return, batch_counter, episode_counter])
+						
+
+				if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
+					print('\n')
 
 if __name__ == '__main__':
 
@@ -117,6 +147,7 @@ if __name__ == '__main__':
 	parser.add_argument('--save_weights_freq', type=int, help='Frequency (batches) of saving the weights during training.')
 	parser.add_argument('--log_loss_freq', type=int, help='Frequency (batches) of logging the loss.')
 	parser.add_argument('--test_freq', type=int, help='Frequency (batches) of testing and logging the agent performance.')
+	parser.add_argument('--test_episodes', type=int, help='How many episodes to test to take average return.')
 
 	parser.add_argument('--cfg', type=str, help='path to json config file',
 						default='parameter_files/default.json')
