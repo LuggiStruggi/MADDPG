@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 import argparse
 import torch
-import MARLenvs
-from MARLenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
+import marlenvs
+from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
 from agent import Agents
 import numpy as np
 import time
@@ -29,7 +29,7 @@ def train(params):
 	if params.normalize_observations:
 		env = NormalizeObsWrapper(env)
 	if params.normalize_rewards:
-		env = NormalizeRewWrapper(env)
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0)
 		
 	act_dim = env.get_act_dim()
 	obs_dim = env.get_obs_dim()

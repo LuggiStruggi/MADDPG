@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 import argparse
 import torch
-import MARLenvs
-from MARLenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
+import marlenvs
+from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
 from agent import Agents
 import numpy as np
 import time
