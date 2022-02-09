@@ -26,3 +26,5 @@ To test the performance of the agent, run
 python test.py --run_folder <path to the run-folder>
 ```
 to test and render the performance of the newest saved agent weights.
+
+![agents](https://github.com/LuggiStruggi/MADDPG/blob/main/readme_images/agents3_cropped.gif)
