@@ -46,11 +46,13 @@ def train(params):
 
 	print(params)
 
-	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "critic loss", "batches trained", "episodes gathered"], log_time=True)
-	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "batches trained", "episodes gathered"], log_time=True)
+	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "actor_loss_std", "critic loss", "critic_loss_std", "batches trained", "transitions trained", "episodes gathered", "transitions made"], log_time=True)
+	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "avg_ep_ret_std", "batches trained", "transitions trained", "episodes gathered", "transitions made"], log_time=True)
 
 	episode_counter = 0
 	batch_counter = 0
+	transitions_made_counter = 0
+	transitions_trained_counter = 0
 
 	while batch_counter < params.total_batches:
 		
@@ -68,62 +70,69 @@ def train(params):
 						act = act.unsqueeze(dim = 0) # 1 agent case
 				n_obs, rew, done, _ = env.step(act.numpy())
 				agents.buffer.store(act, rew, torch.Tensor(n_obs), done)
+				transitions_made_counter += 1
 			episode_counter += 1
 
 		# train ------------------------------------------------------------
 		
 		# enough transitions for one batch required
-		if len(agents.buffer) >= params.batch_size:
+		if len(agents.buffer) < params.batch_size:
+			continue
 
-			critic_loss = AverageValueMeter()
-			actor_loss = AverageValueMeter()
-			for batch in range(params.train_batches):
-				c_loss, a_loss  = agents.train_batch(optim_actor = True, update_targets = True)
-				actor_loss += a_loss
-				critic_loss += c_loss
-				batch_counter += 1
-				if batch_counter % params.save_weights_freq == 0:
-					save_dir = os.path.join(log_dir, f"batch_{batch_counter}")
-					if not os.path.exists(save_dir):
-						os.makedirs(save_dir)
-					agents.save(save_dir)
+		critic_loss = AverageValueMeter()
+		actor_loss = AverageValueMeter()
+		for batch in range(params.train_batches):
+			c_loss, a_loss  = agents.train_batch(optim_actor = True, update_targets = True)
+			actor_loss + a_loss
+			critic_loss + c_loss
 
-				if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
-					print(f"Episodes Gathered: {episode_counter} Batches Trained: {batch_counter}")
+			batch_counter += 1
+			transitions_trained_counter += params.batch_size
 
-				if batch_counter % params.log_loss_freq == 0:
-					print(f"Actor loss: {actor_loss}")
-					print(f"Critic loss: {critic_loss}")
-					loss_logger.log([actor_loss, critic_loss, batch_counter, episode_counter])
+			if batch_counter % params.save_weights_freq == 0:
+				save_dir = os.path.join(log_dir, f"batch_{batch_counter}")
+				if not os.path.exists(save_dir):
+					os.makedirs(save_dir)
+				agents.save(save_dir)
 
-				# test ----------------------------------------------------------------
-				if batch_counter % params.test_freq == 0:
-					
-					episode_return = AverageValueMeter()
-					for episode in range(params.test_episodes):
-						done = 0
-						e_return = 0
-						obs = agents.buffer.history.clear()
-						obs = env.reset()
-						agents.buffer.history.store(torch.Tensor(obs))
-						while(not done):
-							with torch.no_grad():
-								obs = agents.buffer.history.get_new_obs()
-								obs = obs=torch.swapaxes(obs, 0, 1)
-								act = agents.act(obs=obs, deterministic=True).squeeze()
-								if params.n_agents == 1:
-									act = act.unsqueeze(dim = 0) # 1 agent case
-							n_obs, rew, done, _ = env.step(act.numpy())
-							agents.buffer.history.store(torch.Tensor(n_obs))
-							e_return += rew
-						episode_return += e_return
+			if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
+				print(f"Episodes Gathered: {episode_counter} Batches Trained: {batch_counter}")
+
+			if batch_counter % params.log_loss_freq == 0:
+				print(f"Actor loss: {actor_loss}")
+				print(f"Critic loss: {critic_loss}")
+				loss_logger.log([actor_loss.mean(), actor_loss.std(), critic_loss.mean(), critic_loss.std(), batch_counter, transitions_trained_counter, episode_counter, transitions_trained_counter])
+				actor_loss.reset()				
+				critic_loss.reset()				
+
+			# test ----------------------------------------------------------------
+			if batch_counter % params.test_freq == 0:
 				
-					print(f"Episode return: {episode_return}")
-					test_logger.log([episode_return, batch_counter, episode_counter])
-						
+				episode_return = AverageValueMeter()
+				for episode in range(params.test_episodes):
+					done = 0
+					e_return = 0
+					obs = agents.buffer.history.clear()
+					obs = env.reset()
+					agents.buffer.history.store(torch.Tensor(obs))
+					while(not done):
+						with torch.no_grad():
+							obs = agents.buffer.history.get_new_obs()
+							obs = obs=torch.swapaxes(obs, 0, 1)
+							act = agents.act(obs=obs, deterministic=True).squeeze()
+							if params.n_agents == 1:
+								act = act.unsqueeze(dim = 0) # 1 agent case
+						n_obs, rew, done, _ = env.step(act.numpy())
+						agents.buffer.history.store(torch.Tensor(n_obs))
+						e_return += rew
+					episode_return + e_return
+			
+				print(f"Episode return: {episode_return}")
+				test_logger.log([episode_return.mean(), episode_return.std(), batch_counter, transitions_trained_counter, episode_counter, transitions_made_counter])
+				episode_return.reset()	
 
-				if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
-					print('\n')
+			if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:
+				print('\n')
 
 if __name__ == '__main__':
 

@@ -153,25 +153,40 @@ class Parameters:
 
 class AverageValueMeter:
 
-	def __init__(self, value: int = 0, counter: int = 0):
-		self.value = value
-		self.counter = counter
+	def __init__(self, init_mean: float = 0, init_std: float = 0, counter: int = 0, sample_correction=True):
+		self._mean = init_mean
+		self._M2 = init_std
+		self._counter = counter
+		self._sc = sample_correction
 
 	def __add__(self, other):
 
 		if isinstance(other, float) or isinstance(other, int):
-			value = self.value + (other - self.value)/(self.counter+1)
-			return AverageValueMeter(value=value, counter=self.counter+1)
+			self._counter += 1
+			delta = other - self._mean
+			self._mean += delta / self._counter
+			delta2 = other - self._mean
+			self._M2 += delta * delta2			
 
 	def __str__(self):
-		return str(self.value)
+		return f"(mean: {self._mean}, std: {self._M2 / (self._counter + 1 if self._sc else self._counter)})"
 
 	def __repr__(self):
 		return str(self)
 
+	def mean(self):
+		return self._mean
+
+	def var(self):
+		return self._M2 / (self._counter + 1 if self._sc else self._counter)
+
+	def std(self):
+		return np.sqrt(self.var())
+
 	def reset(self):
-		self.value = 0
-		self.counter = 0
+		self._mean = 0
+		self._M2 = 0
+		self._counter = 0
 
 
 class CSVLogger:

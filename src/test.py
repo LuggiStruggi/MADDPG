@@ -60,7 +60,7 @@ def test(params):
 			e_return += rew
 			env.render()
 			time.sleep(0.05)
-		episode_return += e_return
+		episode_return + e_return
 		env.close()
 
 	print(f"Episode return: {episode_return}")
