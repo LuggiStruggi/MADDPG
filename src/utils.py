@@ -151,6 +151,7 @@ class Parameters:
 	def __repr__(self):
 		return str(self)
 
+
 class AverageValueMeter:
 
 	def __init__(self, init_mean: float = 0, init_std: float = 0, counter: int = 0, sample_correction=True):

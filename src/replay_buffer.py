@@ -5,7 +5,7 @@ import pickle
 
 class ReplayBuffer:
 	"""
-	ReplayBuffer to store transitions of the 
+	ReplayBuffer to store transitions of the agents
 	"""
 
 	def __init__(self, obs_shape: tuple, act_shape: tuple, history: int = 0, max_length: int = 100000):
@@ -90,45 +90,3 @@ class HistoryBuffer:
 	
 	def clear(self):
 		self.memory.clear()
-	
-
-"""	def save_file(self, path, save_history: bool = False):
-		with open(path, "wb") as f:
-			pickle.dump({"memory" : list(self.memory), "history" : self.history if save_history else })
-
-	def load_file(self, path):
-		pass"""
-
-if __name__ == "__main__":
-	n_agents = 2
-	obs_dim = 3
-	act_dim = 2
-	history = 4
-	rb = ReplayBuffer(obs_shape=(n_agents, obs_dim), act_shape=(n_agents, act_dim), history=history)
-	done = False
-	# initial observation
-	obs = torch.rand((n_agents, obs_dim))
-	rb.history.store(obs)
-	for i in range(100000):
-		
-		act = torch.rand((n_agents, act_dim))
-		next_obs = torch.rand((n_agents, obs_dim))
-		if done == True:
-			reward = None
-		else:
-			reward = random.randint(0, 10)
-		done = False
-		if i % 20 == 20:
-			done = True
-		rb.store(act, reward, next_obs, done)
-		obs = next_obs
-
-	while(True):
-		s, a, r, ns, d = rb.sample_batch(1)
-
-		print(s)
-		print(ns)
-		print(a.shape)
-		print(d.shape)
-		print(r.shape)
-		input("\n")

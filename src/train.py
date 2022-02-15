@@ -1,19 +1,21 @@
 import gym
+import marlenvs
+from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
 import os
+import time
 from datetime import datetime
 import argparse
 import torch
-import marlenvs
-from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
-from agent import Agents
 import numpy as np
-import time
-from utils import AverageValueMeter, Parameters, CSVLogger
 import runnamegen
+from agent import Agents
+from networks import Actor, MADDPGCritic, MADDPGCritic2
+from utils import AverageValueMeter, Parameters, CSVLogger
 
 
 def train(params):
 
+	# choose environment
 	if params.env == "navigation":
 		env = gym.make("Navigation-v0", n_agents=params.n_agents, world_size=5, max_steps=100, tau=1.0, hold_steps=100)
 		continuous = True
@@ -24,20 +26,35 @@ def train(params):
 		env = gym.make("TwoStep-v0")
 		continuous = False
 
+	# normalizations
 	if params.normalize_actions:
 		env = NormalizeActWrapper(env)
 	if params.normalize_observations:
 		env = NormalizeObsWrapper(env)
 	if params.normalize_rewards:
 		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0)
-		
+	
+	# get dimensions
 	act_dim = env.get_act_dim()
 	obs_dim = env.get_obs_dim()
 
-	agents = Agents(n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
+	# networks
+	actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	if params.critic_type == "n2n":
+		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	elif params.critic_type == "n21":
+		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	if params.optim == "SGD":
+		optim = torch.optim.SGD
+	elif params.optim == "Adam":
+		optim = torch.optim.Adam
+
+	# make agents
+	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
 					lr_critic=params.lr_critic, lr_actor=params.lr_actor, gamma=params.discount, tau=params.soft_update_tau,
 					history=params.history, batch_size=params.batch_size, continuous=continuous)
 
+	# make directory to log	
 	log_dir = os.path.join("training_runs", params.run_name)
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
@@ -46,9 +63,15 @@ def train(params):
 
 	print(params)
 
-	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "actor_loss_std", "critic loss", "critic_loss_std", "batches trained", "transitions trained", "episodes gathered", "transitions made"], log_time=True)
-	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "avg_ep_ret_std", "batches trained", "transitions trained", "episodes gathered", "transitions made"], log_time=True)
+	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "actor loss std", "critic loss",
+																		 "critic loss std", "average Q", "average Q std",
+																		 "batches trained", "transitions trained",
+																		 "episodes gathered", "transitions made"], log_time=True)
 
+	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "avg ep ret std", "batches trained",
+																		"transitions trained", "episodes gathered", "transitions made"], log_time=True)
+	
+	# main experiment part
 	episode_counter = 0
 	batch_counter = 0
 	transitions_made_counter = 0
@@ -81,10 +104,12 @@ def train(params):
 
 		critic_loss = AverageValueMeter()
 		actor_loss = AverageValueMeter()
+		avg_Q = AverageValueMeter()
 		for batch in range(params.train_batches):
-			c_loss, a_loss  = agents.train_batch(optim_actor = True, update_targets = True)
+			c_loss, a_loss, avq = agents.train_batch(optim_actor = True, update_targets = True)
 			actor_loss + a_loss
 			critic_loss + c_loss
+			avg_Q + avq
 
 			batch_counter += 1
 			transitions_trained_counter += params.batch_size
@@ -101,9 +126,11 @@ def train(params):
 			if batch_counter % params.log_loss_freq == 0:
 				print(f"Actor loss: {actor_loss}")
 				print(f"Critic loss: {critic_loss}")
-				loss_logger.log([actor_loss.mean(), actor_loss.std(), critic_loss.mean(), critic_loss.std(), batch_counter, transitions_trained_counter, episode_counter, transitions_trained_counter])
+				loss_logger.log([actor_loss.mean(), actor_loss.std(), critic_loss.mean(), critic_loss.std(), avg_Q.mean(), avg_Q.std(),
+								 batch_counter, transitions_trained_counter, episode_counter, transitions_trained_counter])
 				actor_loss.reset()				
 				critic_loss.reset()				
+				avg_Q.reset()				
 
 			# test ----------------------------------------------------------------
 			if batch_counter % params.test_freq == 0:
@@ -141,11 +168,13 @@ if __name__ == '__main__':
 	parser.add_argument('--normalize_actions', type=bool, help='If to normalize actions.')
 	parser.add_argument('--normalize_observations', type=bool, help='If to normalize observations.')
 	parser.add_argument('--normalize_rewards', type=bool, help='If to normalize rewards.')
+	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21"])
 	parser.add_argument('--total_batches', type=int, help='Number of batches to train in total.')
 	parser.add_argument('--n_agents', type=int, help='Number of agents.')
 	parser.add_argument('--exploration_noise', type=float, help='Exploraition noise of agent.')
 	parser.add_argument('--lr_critic', type=float, help='Learning rate of critic.')
 	parser.add_argument('--lr_actor', type=float, help='Learning rate of actor.')
+	parser.add_argument('--optim', type=str, help='The optimizer used', choices = ["SGD", "Adam"])
 	parser.add_argument('--discount', type=float, help='Discount factor for episode reward.')
 	parser.add_argument('--soft_update_tau', type=float, help='Soft update parameter.')
 	parser.add_argument('--history', type=int, help='History length.')

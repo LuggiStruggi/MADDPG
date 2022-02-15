@@ -10,6 +10,7 @@ import numpy as np
 import time
 from utils import AverageValueMeter, Parameters, CSVLogger
 import runnamegen
+from networks import Actor, MADDPGCritic, MADDPGCritic2
 
 def test(params):
 
@@ -33,7 +34,15 @@ def test(params):
 	act_dim = env.get_act_dim()
 	obs_dim = env.get_obs_dim()
 
-	agents = Agents(n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
+	# networks
+	actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	if params.critic_type == "n2n":
+		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	elif params.critic_type == "n21":
+		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	optim = torch.optim.Adam
+
+	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
 					lr_critic=params.lr_critic, lr_actor=params.lr_actor, gamma=params.discount, tau=params.soft_update_tau,
 					history=params.history, batch_size=params.batch_size, continuous=continuous)
 
