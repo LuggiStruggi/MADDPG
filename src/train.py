@@ -2,7 +2,6 @@ import gym
 import marlenvs
 from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, NormalizeRewWrapper
 import os
-import time
 from datetime import datetime
 import argparse
 import torch
@@ -66,15 +65,15 @@ def train(params):
 	loss_logger = CSVLogger(os.path.join(log_dir, "losses.csv"), header=["actor loss", "actor loss std", "critic loss",
 																		 "critic loss std", "average Q", "average Q std",
 																		 "batches trained", "transitions trained",
-																		 "episodes gathered", "transitions made"], log_time=True)
+																		 "episodes gathered", "transitions gathered"], log_time=True)
 
 	test_logger = CSVLogger(os.path.join(log_dir, "tests.csv"), header=["average episode return", "avg ep ret std", "batches trained",
-																		"transitions trained", "episodes gathered", "transitions made"], log_time=True)
+																		"transitions trained", "episodes gathered", "transitions gathered"], log_time=True)
 	
 	# main experiment part
 	episode_counter = 0
 	batch_counter = 0
-	transitions_made_counter = 0
+	transitions_gathered_counter = 0
 	transitions_trained_counter = 0
 
 	while batch_counter < params.total_batches:
@@ -93,7 +92,7 @@ def train(params):
 						act = act.unsqueeze(dim = 0) # 1 agent case
 				n_obs, rew, done, _ = env.step(act.numpy())
 				agents.buffer.store(act, rew, torch.Tensor(n_obs), done)
-				transitions_made_counter += 1
+				transitions_gathered_counter += 1
 			episode_counter += 1
 
 		# train ------------------------------------------------------------
@@ -127,7 +126,7 @@ def train(params):
 				print(f"Actor loss: {actor_loss}")
 				print(f"Critic loss: {critic_loss}")
 				loss_logger.log([actor_loss.mean(), actor_loss.std(), critic_loss.mean(), critic_loss.std(), avg_Q.mean(), avg_Q.std(),
-								 batch_counter, transitions_trained_counter, episode_counter, transitions_trained_counter])
+								 batch_counter, transitions_trained_counter, episode_counter, transitions_gathered_counter])
 				actor_loss.reset()				
 				critic_loss.reset()				
 				avg_Q.reset()				
@@ -155,7 +154,7 @@ def train(params):
 					episode_return + e_return
 			
 				print(f"Episode return: {episode_return}")
-				test_logger.log([episode_return.mean(), episode_return.std(), batch_counter, transitions_trained_counter, episode_counter, transitions_made_counter])
+				test_logger.log([episode_return.mean(), episode_return.std(), batch_counter, transitions_trained_counter, episode_counter, transitions_gathered_counter])
 				episode_return.reset()	
 
 			if batch_counter % params.log_loss_freq == 0 or batch_counter % params.test_freq == 0:

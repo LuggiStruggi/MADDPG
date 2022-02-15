@@ -1,6 +1,5 @@
 import gym
 import os
-from datetime import datetime
 import argparse
 import torch
 import marlenvs
@@ -8,8 +7,7 @@ from marlenvs.wrappers import NormalizeActWrapper, NormalizeObsWrapper, Normaliz
 from agent import Agents
 import numpy as np
 import time
-from utils import AverageValueMeter, Parameters, CSVLogger
-import runnamegen
+from utils import AverageValueMeter, Parameters
 from networks import Actor, MADDPGCritic, MADDPGCritic2
 
 def test(params):

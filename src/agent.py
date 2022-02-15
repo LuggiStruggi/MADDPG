@@ -12,24 +12,16 @@ class Agents:
 	def __init__(self, actor, critic, optim, n_agents: int, obs_dim: int, act_dim: int, sigma: float, lr_critic: float, lr_actor: float, gamma: float,
 				 tau: float = 1.0, history: int = 0, batch_size: int = 32, continuous: bool = False):
 		
-		#self.actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=64)
 		self.actor = actor
-		#self.actor_target = Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=64)
-		#self.actor_target.load_state_dict(self.actor.state_dict())
 		self.actor_target = copy.deepcopy(actor)
 		self.actor_target.eval()
 
-		#self.critic = MADDPGCritic2(n_agents=n_agents, act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=100)
 		self.critic = critic	
-		#self.critic_target = MADDPGCritic2(n_agents=n_agents, act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=100)
-		#self.critic_target.load_state_dict(self.critic.state_dict())
 		self.critic_target = copy.deepcopy(critic)
 		self.critic_target.eval()
 		self.critic_loss = nn.MSELoss()
 
-		#self.critic_optim = torch.optim.Adam(self.critic.parameters(), lr=lr_critic)
 		self.critic_optim = optim(self.critic.parameters(), lr=lr_critic)
-		#self.actor_optim = torch.optim.Adam(self.actor.parameters(), lr=lr_actor)
 		self.actor_optim = optim(self.actor.parameters(), lr=lr_actor)
 
 		self.buffer = ReplayBuffer(obs_shape=(n_agents, obs_dim), act_shape=(n_agents, act_dim) if continuous else (n_agents,), history=history)	

@@ -1,7 +1,6 @@
 from collections import deque
 import torch
 import random
-import pickle
 
 class ReplayBuffer:
 	"""

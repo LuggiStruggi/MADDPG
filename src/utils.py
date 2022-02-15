@@ -1,7 +1,4 @@
-from matplotlib.lines import Line2D
-import matplotlib.pyplot as plt
 import numpy as np
-import time
 import json
 from datetime import datetime
 import csv
