@@ -7,15 +7,7 @@ import matplotlib.pyplot as plt
 
 
 def test_plot(run_folder):
-
-	seaborn.set(rc={'figure.figsize':(11.7,8.27)})
-
-	csv = pandas.read_csv(os.path.join(run_folder, "losses.csv"))
-	line1 = seaborn.lineplot(x="transitions trained", y="actor loss", data=csv, linewidth=0.0)
-	ax = plt.twiny()
-	line2 = seaborn.lineplot(x="transitions gathered", y="actor loss", data=csv, linewidth=0.5)
-	line2.fill_between(csv["transitions gathered"], y1=csv["actor loss"] - csv["actor loss std"], y2=csv["actor loss"] + csv["actor loss std"], alpha=0.5)
-	plt.savefig(os.path.join(run_folder, "actor_loss.svg"))
+	pass
 
 
 def make_plots(run_folder):

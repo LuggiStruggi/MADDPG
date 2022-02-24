@@ -38,7 +38,7 @@ class Agents:
 
 
 	def act(self, obs: torch.Tensor, deterministic: bool = True, discretized: bool = False, target: bool = False) -> torch.Tensor:
-		
+			
 		noise = torch.randn(self.act_shape)*self.sigma
 
 		act = (self.actor_target(obs) if target else self.actor(obs)) + (0 if deterministic else noise)
@@ -99,7 +99,7 @@ class Agents:
 	def _train_critic(self, s: torch.Tensor, a: torch.Tensor, r: torch.Tensor, ns: torch.Tensor, d: torch.Tensor):
 		
 		with torch.no_grad():
-			na = self.act(obs=ns, target=True)
+			na = self.actor_target(obs=ns)
 			nQ = self.critic_target(ns, na)
 			
 			# s -> (bs, n_agents, his+1, obs_dim)
@@ -111,9 +111,9 @@ class Agents:
 
 			# y -> (bs, n_agents)
 			
-		self.critic_optim.zero_grad()
 		Q = self.critic(s, a)
 		loss = self.critic_loss(Q, y)
+		self.critic_optim.zero_grad()
 		loss.backward()
 		self.critic_optim.step()
 		
@@ -121,10 +121,10 @@ class Agents:
 
 	def _train_actor(self, s):
 	
-		self.actor_optim.zero_grad()
 		pi = self.actor(s)
 		Q = self.critic(s, pi)
 		loss = -Q.mean()
+		self.actor_optim.zero_grad()
 		loss.backward()
 		self.actor_optim.step()
 		

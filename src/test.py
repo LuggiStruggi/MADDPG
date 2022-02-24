@@ -8,12 +8,17 @@ from agent import Agents
 import numpy as np
 import time
 from utils import AverageValueMeter, Parameters
-from networks import Actor, MADDPGCritic, MADDPGCritic2
+from networks import Actor, MADDPGCritic, MADDPGCritic2, MADDPGCritic3
 
 def test(params):
 
 	if params.env == "navigation":
 		env = gym.make("Navigation-v0", n_agents=params.n_agents, world_size=5, max_steps=100, tau=1.0, hold_steps=100)
+		continuous = True
+	elif params.env == "navigation_prepos":
+		init_landmark_pos = np.array([[(i+1)*(params.n_agents*5-0.5)/params.n_agents, 0.5] for i in range(params.n_agents)])
+		init_agent_pos = np.array([[(i+1)*(params.n_agents*5-0.5)/params.n_agents, params.n_agents*5 - 0.5] for i in range(params.n_agents)])	
+		env = gym.make("Navigation-v0", n_agents=params.n_agents, world_size=5, max_steps=100, tau=1.0, hold_steps=100, init_agent_pos=init_agent_pos, init_landmark_pos=init_landmark_pos)
 		continuous = True
 	elif params.env == "switch":
 		env = gym.make("Switch-v0", height=5, width=10, view=3, flatten_obs = True)
@@ -26,8 +31,12 @@ def test(params):
 		env = NormalizeActWrapper(env)
 	if params.normalize_observations:
 		env = NormalizeObsWrapper(env)
-	if params.normalize_rewards:
-		env = NormalizeRewWrapper(env)
+
+	if params.normalize_rewards == "-1to0":
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
+	elif params.normalize_rewards == "random_policy_zero":
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
+	
 
 	act_dim = env.get_act_dim()
 	obs_dim = env.get_obs_dim()
@@ -37,7 +46,10 @@ def test(params):
 	if params.critic_type == "n2n":
 		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "n21":
-		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	elif params.critic_type == "single_q":
+		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)	
+
 	optim = torch.optim.Adam
 
 	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
@@ -45,6 +57,7 @@ def test(params):
 					history=params.history, batch_size=params.batch_size, continuous=continuous)
 
 	agents.load(params.weights)
+	agents.eval()
 
 	episode_return = AverageValueMeter()
 	for episode in range(params.test_episodes):

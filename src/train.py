@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import runnamegen
 from agent import Agents
-from networks import Actor, MADDPGCritic, MADDPGCritic2
+from networks import Actor, MADDPGCritic, MADDPGCritic2, MADDPGCritic3
 from utils import AverageValueMeter, Parameters, CSVLogger
 
 
@@ -17,6 +17,11 @@ def train(params):
 	# choose environment
 	if params.env == "navigation":
 		env = gym.make("Navigation-v0", n_agents=params.n_agents, world_size=5, max_steps=100, tau=1.0, hold_steps=100)
+		continuous = True
+	elif params.env == "navigation_prepos":
+		init_landmark_pos = np.array([[(i+1)*(params.n_agents*5-0.5)/params.n_agents, 0.5] for i in range(params.n_agents)])
+		init_agent_pos = np.array([[(i+1)*(params.n_agents*5-0.5)/params.n_agents, params.n_agents*5 - 0.5] for i in range(params.n_agents)])
+		env = gym.make("Navigation-v0", n_agents=params.n_agents, world_size=5, max_steps=100, tau=1.0, hold_steps=100, init_agent_pos=init_agent_pos, init_landmark_pos=init_landmark_pos)
 		continuous = True
 	elif params.env == "switch":
 		env = gym.make("Switch-v0", height=5, width=10, view=3, flatten_obs = True)
@@ -30,8 +35,10 @@ def train(params):
 		env = NormalizeActWrapper(env)
 	if params.normalize_observations:
 		env = NormalizeObsWrapper(env)
-	if params.normalize_rewards:
-		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0)
+	if params.normalize_rewards == "-1to0":
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
+	elif params.normalize_rewards == "random_policy_zero":
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
 	
 	# get dimensions
 	act_dim = env.get_act_dim()
@@ -43,6 +50,8 @@ def train(params):
 		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "n21":
 		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	elif params.critic_type == "single_q":
+		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)	
 	if params.optim == "SGD":
 		optim = torch.optim.SGD
 	elif params.optim == "Adam":
@@ -104,7 +113,9 @@ def train(params):
 		critic_loss = AverageValueMeter()
 		actor_loss = AverageValueMeter()
 		avg_Q = AverageValueMeter()
+
 		for batch in range(params.train_batches):
+			agents.train()
 			c_loss, a_loss, avq = agents.train_batch(optim_actor = True, update_targets = True)
 			actor_loss + a_loss
 			critic_loss + c_loss
@@ -133,7 +144,7 @@ def train(params):
 
 			# test ----------------------------------------------------------------
 			if batch_counter % params.test_freq == 0:
-				
+				agents.eval()
 				episode_return = AverageValueMeter()
 				for episode in range(params.test_episodes):
 					done = 0
@@ -163,11 +174,11 @@ def train(params):
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser("Parser to Initiate Agent Training")
-	parser.add_argument('--env', type=str, help='Name of the environment', choices=['navigation', 'two_step', 'switch'])
+	parser.add_argument('--env', type=str, help='Name of the environment', choices=['navigation','navigation_prepos', 'two_step', 'switch'])
 	parser.add_argument('--normalize_actions', type=bool, help='If to normalize actions.')
 	parser.add_argument('--normalize_observations', type=bool, help='If to normalize observations.')
-	parser.add_argument('--normalize_rewards', type=bool, help='If to normalize rewards.')
-	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21"])
+	parser.add_argument('--normalize_rewards', type=str, help='If to normalize rewards and what type of normalization.', choices=["none", "-1to0", "random_policy_zero"])
+	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21", "single_q"])
 	parser.add_argument('--total_batches', type=int, help='Number of batches to train in total.')
 	parser.add_argument('--n_agents', type=int, help='Number of agents.')
 	parser.add_argument('--exploration_noise', type=float, help='Exploraition noise of agent.')
