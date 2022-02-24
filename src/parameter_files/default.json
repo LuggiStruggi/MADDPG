@@ -10,15 +10,15 @@
 	"lr_critic": [0.005, "Learning rate of critic"],
 	"lr_actor": [0.005, "Learning rate of actor"],
 	"optim" : ["Adam", "The optimizer used"],
-	"discount": [0.99, "Discount factor for episode reward."],
+	"discount": [0.95, "Discount factor for episode reward."],
 	"soft_update_tau": [0.03, "Soft update parameter."],
 	"history": [0, "History length."],
 	"batch_size": [256, "Batch size."],
 	"gather_episodes": [1, "Number of consecutive episodes to gather data."],
 	"train_batches": [1, "Number of consecutive batches trained."],
-	"save_weights_freq": [5000, "Frequency (batches) of saving the agent weights during traning."],
-	"log_loss_freq": [1000, "Frequency (batches) of logging the train losses."],
-	"test_freq": [5000, "Frequency (batches) of testing and logging the agent performance."],
+	"save_weights_freq": [1000, "Frequency (batches) of saving the agent weights during traning."],
+	"log_loss_freq": [100, "Frequency (batches) of logging the train losses."],
+	"test_freq": [1000, "Frequency (batches) of testing and logging the agent performance."],
 	"test_episodes": [100, "How many episodes to test and take average return."]
 }
 
