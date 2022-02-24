@@ -19,6 +19,15 @@ python train.py --lr_critic 0.01
 ```
 which takes the parameters from the default file but ovverrides the given parameter/s.
 
+
+## Plot
+
+To plot the performance of the agent, run
+```
+python plot.py --run_folder <path to the run-folder>
+```
+to plot the losses, Q-values and performance of the agent over time.
+
 ## Test
 
 To test the performance of the agent, run
