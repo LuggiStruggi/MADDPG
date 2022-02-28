@@ -46,9 +46,9 @@ def test(params):
 	if params.critic_type == "n2n":
 		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "n21":
-		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "single_q":
-		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)	
+		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)	
 
 	optim = torch.optim.Adam
 
