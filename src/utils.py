@@ -108,7 +108,7 @@ class Parameters:
 	def save_to_file(self, path: str):
 		data = {key:[self.__dict__[key], self.help.__dict__[key]] for key in self.__dict__.keys() if (key != "fixed" and key != "help")}
 		with open(path, 'w', encoding='utf-8') as f:
-			json.dump(data, f)
+			json.dump(data, f,  indent=2)
 
 	def overload(self, other, ignore=[]):
 		for arg in vars(other):
