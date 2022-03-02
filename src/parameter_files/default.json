@@ -4,6 +4,7 @@
 	"normalize_observations": [true, "If to normalize observations."],
 	"normalize_rewards": ["-1to0", "If to normalize rewards and what type of normalization."],
 	"critic_type" : ["n2n", "Type of the critic network" ],
+	"actor_type" : ["shared", "Type of the actor network" ],
 	"total_batches": [2000000, "Number of batches to train in total."],
 	"n_agents": [3, "Number of agents."],
 	"exploration_noise": [0.3, "Exploration noise of agent."],

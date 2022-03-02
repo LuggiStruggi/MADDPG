@@ -8,7 +8,7 @@ from agent import Agents
 import numpy as np
 import time
 from utils import AverageValueMeter, Parameters
-from networks import Actor, MADDPGCritic, MADDPGCritic2, MADDPGCritic3
+from networks import Actor, Actor2, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
 
 def test(params):
 
@@ -42,14 +42,19 @@ def test(params):
 	obs_dim = env.get_obs_dim()
 
 	# networks
-	actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	if params.actor_type == "shared":
+		actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	elif params.actor_type == "independent":
+		actor = Actor2(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64, n_agents=params.n_agents)
 	if params.critic_type == "n2n":
 		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "n21":
 		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "single_q":
-		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)	
-
+		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	elif params.critic_type == "independent":
+		critic = MADDPGCritic4(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	
 	optim = torch.optim.Adam
 
 	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,

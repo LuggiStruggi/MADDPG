@@ -27,6 +27,22 @@ class Actor(nn.Module):
 		return self.sigmoid(x)
 
 
+class Actor2(nn.Module):
+	"""
+	Multiple indipendent actor networks (one for each agent)
+	"""
+	
+	def __init__(self, act_dim: int, obs_dim: int, n_agents: int,  history: int = 0, hidden_dim: int = 32, min_act: float  = 0.0, max_act: float  = 1.0):
+		super(Actor2, self).__init__()	
+		
+		self.actors = nn.ModuleList([Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=hidden_dim, min_act=min_act, max_act=max_act) for i in range(n_agents)])
+
+	def forward(self, obs: torch.Tensor) -> torch.Tensor:
+
+		return torch.stack([actor(obs[..., i, :, :]) for i, actor in enumerate(self.actors)], dim = -2)
+		
+			
+
 class MADDPGCritic(nn.Module):
 	"""
 	Critic which takes observation-action pairs of all agents and returns specific q values for each 
@@ -153,3 +169,20 @@ class MADDPGCritic3(nn.Module):
 		x = self.linear3(x)
 
 		return x
+
+
+
+class MADDPGCritic4(nn.Module):
+	"""
+	one critic for each agent
+	"""
+
+	def __init__(self, n_agents: int, act_dim: int, obs_dim: int, history: int = 0, hidden_dim: int = 32):
+		super(MADDPGCritic4, self).__init__()
+	
+		self.critics = nn.ModuleList([MADDPGCritic3(n_agents=n_agents, act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=hidden_dim) for i in range(n_agents)])
+
+	def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
+
+		return torch.stack([critic(obs, act) for i, critic in enumerate(self.critics)], dim=-2)
+

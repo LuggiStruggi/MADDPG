@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import runnamegen
 from agent import Agents
-from networks import Actor, MADDPGCritic, MADDPGCritic2, MADDPGCritic3
+from networks import Actor, Actor2, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
 from utils import AverageValueMeter, Parameters, CSVLogger
 
 
@@ -45,22 +45,32 @@ def train(params):
 	obs_dim = env.get_obs_dim()
 
 	# networks
-	actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	if params.actor_type == "shared":
+		actor = Actor(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64)
+	elif params.actor_type == "independent":
+		actor = Actor2(act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=64, n_agents=params.n_agents)
 	if params.critic_type == "n2n":
 		critic = MADDPGCritic(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "n21":
 		critic = MADDPGCritic2(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	elif params.critic_type == "single_q":
-		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)	
+		critic = MADDPGCritic3(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
+	elif params.critic_type == "independent":
+		critic = MADDPGCritic4(n_agents=params.n_agents, act_dim=act_dim, obs_dim=obs_dim, history=params.history, hidden_dim=100)
 	if params.optim == "SGD":
 		optim = torch.optim.SGD
 	elif params.optim == "Adam":
 		optim = torch.optim.Adam
+	
+	if params.actor_type == "independent" and params.critic_type == "independent":
+		independent = True
+	else:
+		independent = False
 
 	# make agents
 	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
 					lr_critic=params.lr_critic, lr_actor=params.lr_actor, gamma=params.discount, tau=params.soft_update_tau,
-					history=params.history, batch_size=params.batch_size, continuous=continuous)
+					history=params.history, batch_size=params.batch_size, continuous=continuous, independent=independent)
 
 	# make directory to log	
 	log_dir = os.path.join("training_runs", params.run_name)
@@ -178,7 +188,8 @@ if __name__ == '__main__':
 	parser.add_argument('--normalize_actions', type=bool, help='If to normalize actions.')
 	parser.add_argument('--normalize_observations', type=bool, help='If to normalize observations.')
 	parser.add_argument('--normalize_rewards', type=str, help='If to normalize rewards and what type of normalization.', choices=["none", "-1to0", "random_policy_zero"])
-	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21", "single_q"])
+	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21", "single_q", "independent"])
+	parser.add_argument('--actor_type', type=str, help='Actor network type', choices=["shared", "independent"])
 	parser.add_argument('--total_batches', type=int, help='Number of batches to train in total.')
 	parser.add_argument('--n_agents', type=int, help='Number of agents.')
 	parser.add_argument('--exploration_noise', type=float, help='Exploraition noise of agent.')

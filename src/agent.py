@@ -10,7 +10,7 @@ import copy
 class Agents:
 
 	def __init__(self, actor, critic, optim, n_agents: int, obs_dim: int, act_dim: int, sigma: float, lr_critic: float, lr_actor: float, gamma: float,
-				 tau: float = 1.0, history: int = 0, batch_size: int = 32, continuous: bool = False):
+				 tau: float = 1.0, history: int = 0, batch_size: int = 32, continuous: bool = False, independent: bool = False):
 		
 		self.actor = actor
 		self.actor_target = copy.deepcopy(actor)
@@ -33,6 +33,8 @@ class Agents:
 		# the shapes of the actual tensors (without batchsize in dim 0)
 		self.obs_shape = (history+1, n_agents, obs_dim)
 		self.act_shape = (n_agents, act_dim)
+		
+		self.independent = independent
 	
 		self.eval()
 
@@ -123,9 +125,19 @@ class Agents:
 	
 		pi = self.actor(s)
 		Q = self.critic(s, pi)
-		loss = -Q.mean()
-		self.actor_optim.zero_grad()
-		loss.backward()
+		if self.independent:
+			loss = -Q.mean(dim=0)
+			for i in range(loss.shape[0] - 1):
+				self.actor_optim.zero_grad()
+				single_loss = loss[i]
+				single_loss.backward(retain_graph=True)
+			loss[-1].backward()
+			loss = loss.mean()
+		else:
+			loss = -Q.mean()
+			self.actor_optim.zero_grad()
+			loss.backward()
+		
 		self.actor_optim.step()
 		
 		return loss.detach().item()
