@@ -30,21 +30,16 @@ def test(params):
 		env = gym.make("TwoStepCont-v0", n_agents=params.n_agents)
 		continuous = True
 
-	if params.normalize_actions:
-		#env = NormalizeActWrapper(env)
-		pass
-	if params.normalize_observations:
-		#env = NormalizeObsWrapper(env)
-		pass
+	if params.normalize_actions == "0to1":
+		env = NormalizeActWrapper(env)
+	if params.normalize_observations == "0to1":
+		env = NormalizeObsWrapper(env)
 	if params.normalize_rewards == "0to1":
-		#env = NormalizeRewWrapper(env)
-		pass
+		env = NormalizeRewWrapper(env)
 	elif params.normalize_rewards == "-1to0":
-		#env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
-		pass
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
 	elif params.normalize_rewards == "random_policy_zero":
-		#env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
-		pass
+		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
 	
 
 	act_dim = env.get_act_dim()

@@ -1,7 +1,7 @@
 {
 	"env": ["navigation", "Name of the environment."],
-	"normalize_actions": [true, "If to normalize actions."],
-	"normalize_observations": [true, "If to normalize observations."],
+	"normalize_actions": ["0to1", "If to normalize actions."],
+	"normalize_observations": ["0to1", "If to normalize observations."],
 	"normalize_rewards": ["-1to0", "If to normalize rewards and what type of normalization."],
 	"critic_type" : ["n2n", "Type of the critic network" ],
 	"actor_type" : ["shared", "Type of the actor network" ],

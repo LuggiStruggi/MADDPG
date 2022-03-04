@@ -34,9 +34,9 @@ def train(params):
 		continuous = True
 
 	# normalizations
-	if params.normalize_actions:
+	if params.normalize_actions == "0to1":
 		env = NormalizeActWrapper(env)
-	if params.normalize_observations:
+	if params.normalize_observations == "0to1":
 		env = NormalizeObsWrapper(env)
 	if params.normalize_rewards == "0to1":
 		env = NormalizeRewWrapper(env)
@@ -111,11 +111,8 @@ def train(params):
 				with torch.no_grad():
 					obs = agents.buffer.history.get_new_obs()
 					obs = obs=torch.swapaxes(obs, 0, 1)
-					act = agents.act(obs=obs, deterministic=False).squeeze()
-					if params.env == "two_step_cont":	
-						act = act.unsqueeze(dim = -1)
-					if params.n_agents == 1:
-						act = act.unsqueeze(dim = 0) # 1 agent case
+					act = agents.act(obs=obs, deterministic=False)
+					act.reshape((params.n_agents, act_dim))
 				n_obs, rew, done, _ = env.step(act.numpy())
 				agents.buffer.store(act, rew, torch.Tensor(n_obs), done)
 				transitions_gathered_counter += 1
@@ -174,10 +171,7 @@ def train(params):
 							obs = agents.buffer.history.get_new_obs()
 							obs = obs=torch.swapaxes(obs, 0, 1)
 							act = agents.act(obs=obs, deterministic=True).squeeze()
-							if params.n_agents == 1:
-								act = act.unsqueeze(dim = 0) # 1 agent case
-							if params.env == "two_step_cont":	
-								act = act.unsqueeze(dim = -1)
+							act = act.reshape((params.n_agents, act_dim))
 						n_obs, rew, done, _ = env.step(act.numpy())
 						agents.buffer.history.store(torch.Tensor(n_obs))
 						e_return += rew
@@ -194,8 +188,8 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser("Parser to Initiate Agent Training")
 	parser.add_argument('--env', type=str, help='Name of the environment', choices=['navigation','navigation_prepos', 'two_step', 'two_step_cont', 'switch'])
-	parser.add_argument('--normalize_actions', type=bool, help='If to normalize actions.')
-	parser.add_argument('--normalize_observations', type=bool, help='If to normalize observations.')
+	parser.add_argument('--normalize_actions', type=str, help='If to normalize actions.', choices = ["none", "0to1", "recommended"])
+	parser.add_argument('--normalize_observations', type=str, help='If to normalize observations.', choices = ["none", "0to1", "recommended"])
 	parser.add_argument('--normalize_rewards', type=str, help='If to normalize rewards and what type of normalization.', choices=["none", "0to1", "-1to0", "random_policy_zero"])
 	parser.add_argument('--critic_type', type=str, help='Critic network type', choices=["n2n", "n21", "single_q", "independent"])
 	parser.add_argument('--actor_type', type=str, help='Actor network type', choices=["shared", "independent"])
