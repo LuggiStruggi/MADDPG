@@ -26,16 +26,25 @@ def test(params):
 	elif params.env == "two_step":
 		env = gym.make("TwoStep-v0")
 		continuous = False
+	elif params.env == "two_step_cont":
+		env = gym.make("TwoStepCont-v0", n_agents=params.n_agents)
+		continuous = True
 
 	if params.normalize_actions:
-		env = NormalizeActWrapper(env)
+		#env = NormalizeActWrapper(env)
+		pass
 	if params.normalize_observations:
-		env = NormalizeObsWrapper(env)
-
-	if params.normalize_rewards == "-1to0":
-		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
+		#env = NormalizeObsWrapper(env)
+		pass
+	if params.normalize_rewards == "0to1":
+		#env = NormalizeRewWrapper(env)
+		pass
+	elif params.normalize_rewards == "-1to0":
+		#env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=False)
+		pass
 	elif params.normalize_rewards == "random_policy_zero":
-		env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
+		#env = NormalizeRewWrapper(env, high = 0.0, low = -1.0, random_policy_zero=True)
+		pass
 	
 
 	act_dim = env.get_act_dim()
@@ -78,6 +87,8 @@ def test(params):
 				obs = agents.buffer.history.get_new_obs()
 				obs = obs=torch.swapaxes(obs, 0, 1)
 				act = agents.act(obs=obs, deterministic=True).squeeze()
+				if params.env == "two_step_cont":	
+					act = act.unsqueeze(dim = -1)
 				if params.n_agents == 1:
 					act = act.unsqueeze(dim = 0) # 1 agent case
 			n_obs, rew, done, _ = env.step(act.numpy())
