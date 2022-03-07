@@ -8,9 +8,10 @@ import torch
 import numpy as np
 import runnamegen
 from agent import Agents
-from networks import Actor, Actor2, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
+from networks import Actor, Actor2, Actor3, Actor4, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
 from utils import AverageValueMeter, Parameters, CSVLogger
-
+from noise_generators import GaussianNoise, UniformNoise, OrnsteinUhlenbeckProcess
+import time
 
 def train(params):
 
@@ -67,13 +68,18 @@ def train(params):
 	elif params.optim == "Adam":
 		optim = torch.optim.Adam
 	
+	if params.noise_type == "gaussian":
+		noise_generator = GaussianNoise(sigma=params.exploration_noise, shape=(params.n_agents, act_dim))
+	if params.noise_type == "orn_uhl":
+		noise_generator = OrnsteinUhlenbeckProcess(sigma=params.exploration_noise, shape=(params.n_agents, act_dim))
+
 	if params.actor_type == "independent" and params.critic_type == "independent":
 		independent = True
 	else:
 		independent = False
 
 	# make agents
-	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
+	agents = Agents(actor=actor, critic=critic, optim=optim, noise_generator=noise_generator, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim,
 					lr_critic=params.lr_critic, lr_actor=params.lr_actor, gamma=params.discount, tau=params.soft_update_tau,
 					history=params.history, batch_size=params.batch_size, continuous=continuous, independent=independent)
 
@@ -196,6 +202,7 @@ if __name__ == '__main__':
 	parser.add_argument('--total_batches', type=int, help='Number of batches to train in total.')
 	parser.add_argument('--n_agents', type=int, help='Number of agents.')
 	parser.add_argument('--exploration_noise', type=float, help='Exploraition noise of agent.')
+	parser.add_argument('--noise_type', type=str, help='Type of noise process.', choices=["gaussian", "orn_uhl"])
 	parser.add_argument('--lr_critic', type=float, help='Learning rate of critic.')
 	parser.add_argument('--lr_actor', type=float, help='Learning rate of actor.')
 	parser.add_argument('--optim', type=str, help='The optimizer used', choices = ["SGD", "Adam"])

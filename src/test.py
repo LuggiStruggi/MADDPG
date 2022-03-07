@@ -8,7 +8,8 @@ from agent import Agents
 import numpy as np
 import time
 from utils import AverageValueMeter, Parameters
-from networks import Actor, Actor2, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
+from networks import Actor, Actor2, Actor3, Actor4, MADDPGCritic, MADDPGCritic2, MADDPGCritic3, MADDPGCritic4
+from noise_generators import GaussianNoise
 
 def test(params):
 
@@ -61,7 +62,7 @@ def test(params):
 	
 	optim = torch.optim.Adam
 
-	agents = Agents(actor=actor, critic=critic, optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim, sigma=params.exploration_noise,
+	agents = Agents(actor=actor, critic=critic, noise_generator=GaussianNoise(sigma=0, shape=(params.n_agents, act_dim)), optim=optim, n_agents=params.n_agents, obs_dim=obs_dim, act_dim=act_dim,
 					lr_critic=params.lr_critic, lr_actor=params.lr_actor, gamma=params.discount, tau=params.soft_update_tau,
 					history=params.history, batch_size=params.batch_size, continuous=continuous)
 

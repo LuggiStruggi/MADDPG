@@ -8,6 +8,7 @@
 	"total_batches": [2000000, "Number of batches to train in total."],
 	"n_agents": [3, "Number of agents."],
 	"exploration_noise": [0.3, "Exploration noise of agent."],
+	"noise_type": ["gaussian", "Exploration noise of agent."],
 	"lr_critic": [0.005, "Learning rate of critic"],
 	"lr_actor": [0.005, "Learning rate of actor"],
 	"optim" : ["Adam", "The optimizer used"],

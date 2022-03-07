@@ -9,7 +9,7 @@ import copy
 
 class Agents:
 
-	def __init__(self, actor, critic, optim, n_agents: int, obs_dim: int, act_dim: int, sigma: float, lr_critic: float, lr_actor: float, gamma: float,
+	def __init__(self, actor, critic, optim, noise_generator, n_agents: int, obs_dim: int, act_dim: int, lr_critic: float, lr_actor: float, gamma: float,
 				 tau: float = 1.0, history: int = 0, batch_size: int = 32, continuous: bool = False, independent: bool = False):
 		
 		self.actor = actor
@@ -24,8 +24,9 @@ class Agents:
 		self.critic_optim = optim(self.critic.parameters(), lr=lr_critic)
 		self.actor_optim = optim(self.actor.parameters(), lr=lr_actor)
 
+		self.noise_generator = noise_generator
+
 		self.buffer = ReplayBuffer(obs_shape=(n_agents, obs_dim), act_shape=(n_agents, act_dim) if continuous else (n_agents,), history=history)	
-		self.sigma = sigma
 		self.tau = tau
 		self.gamma=gamma
 		self.batch_size = batch_size
@@ -41,7 +42,7 @@ class Agents:
 
 	def act(self, obs: torch.Tensor, deterministic: bool = True, discretized: bool = False, target: bool = False) -> torch.Tensor:
 			
-		noise = torch.randn(self.act_shape)*self.sigma
+		noise = self.noise_generator.generate()
 
 		act = (self.actor_target(obs) if target else self.actor(obs)) + (0 if deterministic else noise)
 		act = torch.clamp(act, min=0, max=1)

@@ -1,4 +1,5 @@
 import torch
+import random
 from torch import nn
 
 class Actor(nn.Module):
@@ -38,10 +39,45 @@ class Actor2(nn.Module):
 		self.actors = nn.ModuleList([Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=hidden_dim, min_act=min_act, max_act=max_act) for i in range(n_agents)])
 
 	def forward(self, obs: torch.Tensor) -> torch.Tensor:
-
+		
 		return torch.stack([actor(obs[..., i, :, :]) for i, actor in enumerate(self.actors)], dim = -2)
 		
-			
+
+class Actor3(nn.Module):
+	"""
+	Multiple indipendent actor networks trained independently, executing as ensemble
+	"""		
+	def __init__(self, act_dim: int, obs_dim: int, n_agents: int,  history: int = 0, hidden_dim: int = 32, min_act: float  = 0.0, max_act: float  = 1.0):
+		super(Actor3, self).__init__()	
+		
+		self.actors = nn.ModuleList([Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=hidden_dim, min_act=min_act, max_act=max_act) for i in range(n_agents)])
+
+	def forward(self, obs: torch.Tensor) -> torch.Tensor:
+		
+		if self.training:
+			return torch.stack([actor(obs[..., i, :, :]) for i, actor in enumerate(self.actors)], dim = -2)
+		else:
+			return torch.stack([torch.mean(torch.stack([actor(obs[..., i, :, :]) for actor in self.actors], dim = -2), dim = -2) for i in range(len(self.actors))], dim = -2)
+
+
+class Actor4(nn.Module):
+	"""
+	Multiple indipendent actor networks trained when picked randomly, executing as ensemble
+	"""		
+	def __init__(self, act_dim: int, obs_dim: int, n_agents: int,  history: int = 0, hidden_dim: int = 32, min_act: float  = 0.0, max_act: float  = 1.0):
+		super(Actor4, self).__init__()	
+		
+		self.actors = nn.ModuleList([Actor(act_dim=act_dim, obs_dim=obs_dim, history=history, hidden_dim=hidden_dim, min_act=min_act, max_act=max_act) for i in range(n_agents)])
+
+	def forward(self, obs: torch.Tensor) -> torch.Tensor:
+		
+		if self.training:
+			return torch.stack([random.choice(self.actors)(obs[..., i, :, :]) for i in range(len(self.actors))], dim = -2)
+		else:
+			return torch.stack([torch.mean(torch.stack([actor(obs[..., i, :, :]) for actor in self.actors], dim = -2), dim = -2) for i in range(len(self.actors))], dim = -2)
+
+
+
 
 class MADDPGCritic(nn.Module):
 	"""
@@ -134,7 +170,7 @@ class MADDPGCritic2(nn.Module):
 		for i in range(obs.shape[1]):
 			indicies = torch.tensor([j for j in range(obs.shape[1]) if j != i])
 			single = self.forward_single(torch.index_select(obs, 1, torch.tensor([i])), torch.index_select(act, 1, torch.tensor([i])),
-										 	  torch.index_select(obs, 1, indicies), torch.index_select(act, 1, indicies))
+											  torch.index_select(obs, 1, indicies), torch.index_select(act, 1, indicies))
 			single = torch.squeeze(single)
 			Q_values[:, i] = single
 		return Q_values
